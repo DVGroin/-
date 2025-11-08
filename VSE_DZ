@@ -1,0 +1,219 @@
+
+
+#MAIN FAIL
+
+
+from fastapi import FastAPI
+from typing import Dict, Any # Нужно для объявления внутри add_grade
+import uvicorn
+import json
+# Нужно использовать uvicorn
+app = FastAPI()
+
+Grades = "grades.json"
+Class = "class.json"
+
+def load_data(name):
+	try:
+		with open(name, "r") as f:
+			return json.load(f)
+	except Exception as e:
+		return []
+
+def save_data(grades, name):
+	with open(name, "w") as f:
+		return json.dump(grades, f, indent=2)
+
+def generate_id(name):
+	grades = load_data(name)
+	if not grades:
+		return 0
+	#  Телеграмм лучше
+	return max(grade["id"] for grade in grades) + 1
+
+@app.get("/grades") # Отправить клиенту
+def get_grades():
+	return load_data(Grades)
+
+# в cmd - curl -X POST "Адрес"
+@app.post("/grades") # Отправить от клиента
+def add_grade(data: Dict[str, Any]):
+	grades = load_data(Grades)
+	new_grade = {
+		"id": generate_id(Grades),
+		"name": data["name"],
+		"subject": data["subject"],
+		"grade": data["grade"],
+		"date": data["date"],
+		"teacher": data["teacher"]
+	}
+
+	grades.append(new_grade)
+	save_data(grades, Grades)
+	return {"Success": "Failure"}
+
+@app.delete("/grades/{grade_id}")
+def delete_grade(grade_id: int):
+	grades = load_data(Grades)
+	for i, grade in enumerate(grades):
+		if grade["id"] == grade_id:
+			deleted_grade = grades.pop(i)
+			save_data(grades, Grades)
+			return deleted_grade
+	return {"ERROR": "Нет такой оценки"}
+
+@app.put("/grades")
+def change_grade(data: Dict[str, Any]):
+	grades = load_data()
+	new_grade = {
+		"id": data["id"],
+		"name": data["name"],
+		"subject": data["subject"],
+		"grade": data["grade"],
+		"date": data["date"],
+		"teacher": data["teacher"]
+	}
+	for i, grade in enumerate(grades):
+		if grade["id"] == data["id"]:
+			grades[i] = new_grade
+			save_data(grades)
+			return {"Success": "Failure"}
+	return {"ERROR": "Нет такой оценки"}
+
+@app.get("/grades/{grade_id}")
+def get_grade_by_id(grade_id: int):
+	grades = load_data(Grades)
+	for grade in grades:
+		if grade["id"] == grade_id:
+			return grade_id
+	return {"ERROR": "Нет такой оценки"}
+@app.update("/grades/{id}")
+def update_grade:	
+	print("Сайт обновлён")
+@app.get("/class")
+def get_all_classes():
+	return load_data(Class)
+@app.get("/class/{id}")
+def get_class_by_id(id : int):
+	classs = load_data(Class)
+	for i in classs:
+		if classs["id"] == id:
+			return (classs[id])
+	return {"ERROR": "Нет такого класса"}
+@app.post("/class")
+def add_class(data: Dict[str, Any]):
+	classs = load_data(Class)
+	new_classs = {
+		"id": generate_id(Class),
+		"name": data["name"],
+		"spisok_classa": data["spisok_classa"],
+		"teacher": data["teacher"]
+	}
+	classs.append(new_classs)
+	save_data(classs, Class)
+	return {"Success": "Failure"}
+@app.delete("/class/{id}")
+def delete_class_by_id(id):
+	classs = load_data(Grades)
+	for i, clas in enumerate(classs):
+		if clas["id"] == id:
+			deleted_class = classs.pop(i)
+			save_data(classs, Class)
+			return deleted_class
+	return {"ERROR": "Нет такого класса"}
+if __name__ == "__main__":
+	uvicorn.run(app, host="127.0.0.1", port=8001, log_level="info")
+
+
+
+#CLIENT FAIL
+
+
+
+# Импортируем библиотеку requests для отправки HTTP-запросов к нашему API
+import requests
+
+# Базовый URL нашего FastAPI сервера (адрес где запущено приложение)
+URL = "http://127.0.0.1:8001"
+
+def get_all():
+	# Отправляем GET запрос к endpoint /grades чтобы получить все оценки
+	res = requests.get(f"{URL}/grades")
+	# Выводим ответ от сервера в формате JSON
+	print(res.json())
+
+def get_by_id(grade_id):
+	# Отправляем GET запрос к endpoint /grades/{id} чтобы получить одну оценку по ID
+	# f-строка подставляет grade_id в URL: http://127.0.0.1:8000/grades/1
+	res = requests.get(f"{URL}/grades/{grade_id}")
+	# Выводим найденную оценку или сообщение об ошибке
+	print(res.json())
+
+def add_grade(name, subject, grade, date, teacher):
+	# Создаем словарь с данными новой оценки (тело POST запроса)
+	data = {
+		"name": name,		# Имя студента
+		"subject": subject,  # Название предмета
+		"grade": grade,	  # Оценка (число)
+		"date": date,		# Дата выставления оценки
+		"teacher": teacher   # ФИО преподавателя
+	}
+	# Отправляем POST запрос к endpoint /grades с данными в формате JSON
+	res = requests.post(f"{URL}/grades", json=data)
+	# Выводим ответ от сервера (успех или ошибка)
+	print(res.json())
+
+def delete_grade(grade_id):
+	# Отправляем DELETE запрос к endpoint /grades/{id} для удаления оценки по ID
+	res = requests.delete(f"{URL}/grades/{grade_id}")
+	# Выводим удаленную оценку или сообщение об ошибке
+	print(res.json())
+def get_all_classes():
+	res = requests.get(f"{URL}/class")
+	print(res.json)
+def get_class_by_id(id : int):
+	res = requests.get(f"{URL}/class/{id}")
+	print (res.json)
+def add_class(id,name,class_spisok,teacher):
+	data = {
+		"id": id,
+		"name": name,
+		"spisok_classa":class_spisok,
+		"teacher":teacher
+	}
+	res = requests.post(f"{URL}/class", json=data)
+	print(res.json())
+def delete_class_by_id(id):
+	res = requests.delete(f"{URL}/class/{id}")
+	print(res.json())
+
+add_class(0, "dfdad", ["sdsadsda"], "asdasasd")
+
+
+ВОЛОСАТЫЙ БИЗНЕС
+#include <iostream>
+#include <vector>
+using namespace std;
+void main(){
+	int n, temp, s = 0;
+	cin >> n;
+	vector<int> a, c(n);
+	for(int i = 0; i < n; ++i){
+		cin >> temp;
+		a.push_back(temp);
+	}
+	int pos = a.size() - 1;
+	c[pos] = 1;
+	for(int i = a.size() - 2; i >= 0; --i){
+		if(a[pos] >= a[i])
+		  c[pos]++;
+		else{
+			pos = i;
+			c[pos] = 1;
+		}
+	}
+	int sum = 0;
+	for(int i = 0; i < c.size(); ++i)
+		sum += c[i] * a[i];
+	cout << sum << " ";
+}
